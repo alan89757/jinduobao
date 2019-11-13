@@ -1,0 +1,210 @@
+<!-- <?php 
+set_time_limit(120);
+include '../com/func.php';
+?> -->
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-touch-fullscreen" content="yes" />
+<meta name="format-detection" content="telephone=no"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<meta name="format-detection" content="telephone=no" />
+<meta name="msapplication-tap-highlight" content="no" />
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,minimum-scale=1.2" />
+<script src="./func.js"></script>
+<title>CCB神器</title>
+<style>
+*{ line-height:150%; font-size:13px; font-family:"新宋体"}
+</style>
+<body>
+	<div>
+			<font style='color:green'>{$sqUserName}</font>(".date("Y-m-d H:i:s").")<hr/>
+	</div>
+	<script>
+		$sqUserId = "游客";//$_COOKIE['sqUserId'];
+		$sqUserName = "游客";//$_COOKIE['sqUserName'];
+		$titleHtml = `欢迎您:<font style='color:green'>{$sqUserName}</font>(".date("Y-m-d H:i:s").")<hr/>`;
+
+		$isTingpan = checkTingpan();
+		$goldUsdPrice = getGoldUsdPrice();
+		list($rmbHuiLv,$rmbHuiLv2)= getRmbHuiLv();
+		$goldRMBPrice = transToCCBPrice($goldUsdPrice,$rmbHuiLv);;
+		$goldRMBPrice2 = transToCCBPrice($goldUsdPrice,$rmbHuiLv2);
+		//$ccbPriceList = getCCBPriceList();
+		$ccbPrice = $goldRMBPrice;//getCCBPrice($ccbPriceList);
+		$diffPrice = sprintf("%.2f",$ccbPrice-$goldRMBPrice);
+		$ccbCachePrice = getCacheCCBPrice($goldUsdPrice,$goldRMBPrice,$ccbPrice,$rmbHuiLv,$diffPrice);
+
+		$ccbchajia = sprintf("%.2f",$ccbPrice-$ccbCachePrice);
+
+		if($ccbchajia > 0){
+			$ccbchajiaHtml = "<b style='color:red'>+".$ccbchajia."</b>";
+		}else if($ccbchajia < 0){
+			$ccbchajiaHtml = "<b style='color:green'>".$ccbchajia."</b>";
+		}else{
+			$ccbchajiaHtml = $ccbchajia;
+		}
+
+		$logContent= @file_get_contents('./data/logs/'.date("Ymd"));
+		$priceRange = getPriceRange($logContent);
+		$junjia = sprintf("%.2f",($priceRange["minPrice"]+$priceRange["maxPrice"])/2);
+		$logContent2= @file_get_contents('./data/logs/'.date("Ymd",strtotime("-1 days")));
+		$priceRange2 = getPriceRange($logContent2);
+		$junjia2 = sprintf("%.2f",($priceRange2["minPrice"]+$priceRange2["maxPrice"])/2);
+		echo $titleHtml; 
+		echo "外USD金价:".$goldUsdPrice;
+
+		echo "<br/>外RMB汇率:".$rmbHuiLv2;
+		echo "<br/>外AU99计算:".$goldRMBPrice2;
+		echo "<br/>内RMB汇率:".$rmbHuiLv;	  
+		echo "<br/>昨日波动:".$priceRange2["minPrice"]."-".$priceRange2["maxPrice"]." 均:".$junjia2;
+		echo "<br/>今日波动:".$priceRange["minPrice"]."-".$priceRange["maxPrice"]." 均:".$junjia;
+		echo "<br/>AU99当前金价:".$goldRMBPrice;
+		echo "<br/>金价增速:".$ccbchajiaHtml;
+		echo "<br/><br/><b style='color:red'>中期目标：".transToCCBPrice(1370,$rmbHuiLv2)."元/克</b>";
+		echo "<br/><b style='color:red'>长期目标：".transToCCBPrice(1500,$rmbHuiLv2)."元/克</b>";
+
+		if($isTingpan){
+			echo "<h2 style='color:green'>已停盘</h2>";
+		}
+		if(!empty($_GET['stop'])){
+			$link_name1 = "已停止"; 
+			$link_name2 = "开始";
+			$url1="?stop=1&t=".time();
+			$url2="?t=".time();   
+		}else{
+			$link_name1 = "刷新中...";
+			$link_name2 = "停止";
+			$url1="?t=".time();
+			$url2="?stop=1&t=".time();   
+		}
+		$refreshTime = 3000;
+		$win_msg = false;
+		$win_title = false;	
+		if(empty($_COOKIE['ccbPrice']) || $_COOKIE['ccbPrice']<>$ccbCachePrice){
+			$win_title = "金价变动通知：现价".$ccbPrice;
+			$win_msg = "外盘金价:{$goldUsdPrice}  内盘RMB汇率：{$rmbHuiLv}";
+			setcookie('ccbPrice',$ccbCachePrice,time()+3600*24*100, '/');
+		}
+
+		if($win_title && $win_msg){
+			init_win_tip($win_title,$win_msg);
+		}	
+		if($isTingpan){
+			echo "<br/><br/>更新记录 ";  
+		}else{
+			echo "<br/><br/>更新记录&nbsp;<font color='green'>{$link_name1}</font>(<a href='{$url2}'>{$link_name2}</a>) | 
+			<a target='_blank' href='http://www.minggui666.com/m'>名贵金价</a> | <a target='_blank' href='/pdd/pdd.php'>拼多多</a><hr/>";
+		}
+	</script>
+<table style="width:99%">
+<tr><td>Au99金价</td><td>Au99计算</td><td>汇率</td><td>外盘价</td><td>更新时间</td></tr>
+<?php	
+//$logContent = preg_replace("/[0-9]{4}-[0-9]{2}-[0-9]{2} /is","",$logContent);
+$logContent = str_replace("{","<tr><td>",$logContent);
+$logContent = str_replace("}","</td></tr>",$logContent);
+$logContent = str_replace(",","</td><td>",$logContent);
+
+echo $logContent;
+?>
+</table>
+<?php if(!$isTingpan && empty($_GET['stop'])){?>
+<script>
+setTimeout(function(){location.href="<?php echo $url1?>"},<?php echo $refreshTime?>);
+</script>
+<?php }?>
+
+<?php if(empty($_SESSION['pt_get'])){	file_get_contents("http://47.98.169.224/ccb-pt/pt.php");	$_SESSION['pt_get'] = time();}
+function init_win_tip($title,$msg){
+?>
+<script type="text/javascript" src="//cdn.bootcss.com/jquery/3.2.0/jquery.js"></script>
+    <script>        $(function() {
+            var timer = null,
+                title = $('title').text();
+				
+			showMsgNotification("<?php echo $title?>","<?php echo $msg?>");				
+ 
+            $('body').on('click', function() {
+                clearInterval(timer);
+                $('title').text(title);
+            });
+ 
+            function showMsgNotification(title, msg) {
+                var Notification = window.Notification || window.mozNotification || window.webkitNotification;
+ 
+                if(Notification) {//支持桌面通知
+                    if(Notification.permission == "granted") {//已经允许通知
+                        var instance = new Notification(title, {
+                            body: msg,
+                            icon: "http://www.ccb.com/favicon.ico",
+                        });
+ 
+                        instance.onclick = function() {
+                            $('body').css({'background': 'red'});
+                            console.log('onclick');
+                            instance.close();
+                        };
+                        instance.onerror = function() {
+                            console.log('onerror');
+                        };
+                        instance.onshow = function() {
+                            setTimeout(function(){instance.close();},7000);
+                        };
+                        instance.onclose = function() {
+                            console.log('onclose');
+                        };
+                    }else {//第一次询问或已经禁止通知(如果用户之前已经禁止显示通知，那么浏览器不会再次询问用户的意见，Notification.requestPermission()方法无效)
+                        Notification.requestPermission(function(status) {
+                            if (status === "granted") {//用户允许
+                                var instance = new Notification(title, {
+                                    body: msg,
+                                    icon: "http://www.ccb.com/favicon.ico"
+                                });
+ 
+                                instance.onclick = function() {
+                                    // Something to do
+                                };
+                                instance.onerror = function() {
+                                    // Something to do
+                                };
+                                instance.onshow = function() {
+                                    setTimeout(function(){instance.close();},3000);
+                                };
+                                instance.onclose = function() {
+                                    // Something to do
+                                };
+                            }else {//用户禁止
+                                return false
+                            }
+                        });
+                    }
+                }else {//不支持(IE等)
+                    var index = 0;    
+ 
+                    clearInterval(timer);
+                    timer = setInterval(function() {
+                        if(index%2) {
+                            $('title').text('【　　　】'+ title);//这里是中文全角空格，其他不行
+                        }else {
+                            $('title').text('【新消息】'+ title);
+                        }
+                        index++;
+ 
+                        if(index > 20) {
+                            clearInterval(timer);
+                        }
+                    }, 500);
+                }
+ 
+            }
+ 
+        });
+ 
+    </script>
+<?php
+}?>
+</body>
+</html>
