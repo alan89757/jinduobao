@@ -1,6 +1,7 @@
 <template>
   <div class="useinfo">
     欢迎您:<font style='color:green'>{{sqUserName}}</font>&nbsp;&nbsp;{{currentTime}}<hr/>
+    test
   </div>
 </template>
 
