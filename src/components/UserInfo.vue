@@ -7,6 +7,8 @@
 
 <script>
 import moment from "moment";
+import { checkTingpan, getGoldUsdPrice } from "@/common/js/func";
+
 export default {
   name: 'UserInfo',
   props: {
@@ -16,6 +18,11 @@ export default {
       sqUserName: '高朋',
       currentTime : moment().format('YYYY-MM-DD h:mm:ss a')
     }
+  },
+  mounted() {
+    const vconsole = window.console.log;
+    vconsole(checkTingpan());
+    vconsole(getGoldUsdPrice())
   }
 }
 </script>
