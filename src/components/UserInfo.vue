@@ -8,11 +8,15 @@
     <p>外RMB汇率:{{rmbHuiLv2}}</p>
     <p>外AU99计算:{{goldRMBPrice2}}</p>
     <p>内RMB汇率:{{rmbHuiLv}}</p>
-    <p>昨日波动:{{yesterdayWave}}</p>
-    <p>今日波动:{{todayWave}}</p>
-    <p>金价增速:
-      <b v-if="ccbchajia > 0" style='color:red'>{{ccbchajia}}</b>
-      <b v-else-if="ccbchajia < 0" style='color:green'>{{ccbchajia}}</b>
+    <p>昨日波动:{{priceRange2['minPrice']}}-{{priceRange2['maxPrice']}} 均{{jujia2}}</p>
+    <p>今日波动:{{priceRange['minPrice']}}-{{priceRange['maxPrice']}} 均{{jujia}}</p>
+    <p>
+      AU99当前金价:{{goldRMBPrice}}
+    </p>
+    <p>
+      金价增速:
+      <b v-if="ccbchajia > 0" style="color:red">{{ccbchajia}}</b>
+      <b v-else-if="ccbchajia < 0" style="color:green">{{ccbchajia}}</b>
       <b v-else>{{ccbchajia}}</b>
     </p>
     <p>
@@ -21,12 +25,15 @@
     <p>
       <b style="color:red">长期目标：{{transToCCBPriceLong}}元/克</b>
     </p>
+    <p v-show="isTingpan">
+      <h2 style='color:green'>已停盘</h2>
+    </p>
   </div>
 </template>
 
 <script>
 import moment from "moment";
-import { 
+import {
   checkTingpan,
   getGoldUsdPrice,
   getRmbHuiLv,
@@ -38,58 +45,93 @@ import {
 } from "@/common/js/func";
 
 export default {
-  name: 'UserInfo',
-  props: {
-  },
+  name: "UserInfo",
+  props: {},
   data() {
     return {
-      sqUserName: 'Alan',
-      currentTime : moment().format('YYYY-MM-DD h:mm:ss a'),
-      goldUsdPrice: '111',
-      rmbHuiLv2: '222',
-      goldRMBPrice2: '333',
-      rmbHuiLv: '444',
-      yesterdayWave: '555',
-      todayWave: '666',
-      goldSpeedUp: '777',
-      ccbchajia: '888',
+      sqUserName: "Alan",
+      currentTime: moment().format("YYYY-MM-DD h:mm:ss a"),
+      goldUsdPrice: "",
+      rmbHuiLv2: "",
+      goldRMBPrice: "",
+      goldRMBPrice2: "",
+      rmbHuiLv: "",
+      yesterdayWave: "",
+      todayWave: "",
+      goldSpeedUp: "",
+      ccbchajia: "",
       transToCCBPriceMedium: 288,
       transToCCBPriceLong: 400,
-      logContent: ''
-    }
+      logContent: "",
+      logContent2: "",
+      priceRange: "",
+      priceRange2: "",
+      jujia: "",
+      jujia2: "",
+      isTingpan: ""
+    };
   },
-  methods: {
-   
-  },
+  methods: {},
   created() {
     // 获取日志
     // let filename = './data/logs/' + moment().format('YYYYMMDD');
-    let filename = '20191114';
-    file_get_contents(filename).then((response)=> {
-      this.logContent = response.data || '';
-      console.log(this.logContent)
-    })
+    let filename = "20191116.json";
+    file_get_contents(filename).then(response => {
+      this.logContent = response.data || "";
+      this.priceRange = getPriceRange(this.logContent);
+      this.jujia = (
+        (this.priceRange["minPrice"] + this.priceRange["maxPrice"]) /
+        2
+      ).toFixed(2);
+
+      // console.log('priceRange ' + JSON.stringify(this.priceRange))
+    });
+
+    // let filename2 = './data/logs/' + moment().subtract(1, 'days').format('YYYYMMDD');
+    let filename2 = "20191115.json";
+    file_get_contents(filename2).then(response => {
+      this.logContent2 = response.data || "";
+      this.priceRange2 = getPriceRange(this.logContent2);
+      this.jujia2 = (
+        (this.priceRange2["minPrice"] + this.priceRange2["maxPrice"]) /
+        2
+      ).toFixed(2);
+      this.yesterdayDuration =
+        this.priceRange2["minPrice"] +
+        "-" +
+        this.priceRange2["maxPrice"] +
+        " 均:" +
+        this.junjia2;
+    });
   },
   mounted() {
-    const isTingpan = checkTingpan();  // 停盘时间
-    this.goldUsdPrice = getGoldUsdPrice();  // 金价
-    let [rmbHuiLv,rmbHuiLv2]= getRmbHuiLv();
-    let goldRMBPrice = transToCCBPrice(this.goldUsdPrice,rmbHuiLv);;
-    let goldRMBPrice2 = transToPtPrice(this.goldUsdPrice,rmbHuiLv2);
-    let ccbPrice = goldRMBPrice;
-		let diffPrice = (ccbPrice-goldRMBPrice).toFixed(2)
-		let ccbCachePrice = getCacheCCBPrice(this.goldUsdPrice,goldRMBPrice,ccbPrice,rmbHuiLv,diffPrice);
-    this.ccbchajia = (ccbPrice-ccbCachePrice).toFixed(2);
+    const isTingpan = checkTingpan(); // 停盘时间
+    this.goldUsdPrice = getGoldUsdPrice(); // 金价
+    let rmbHuiL = getRmbHuiLv();
+    this.rmbHuiLv = rmbHuiL[0];
+    this.rmbHuiLv2 = rmbHuiL[1];
+    this.goldRMBPrice = transToCCBPrice(this.goldUsdPrice, this.rmbHuiLv);
+    this.goldRMBPrice2 = transToPtPrice(this.goldUsdPrice, this.rmbHuiLv2);
+    let ccbPrice = this.goldRMBPrice;
+    let diffPrice = (ccbPrice - this.goldRMBPrice).toFixed(2);
+    let ccbCachePrice = getCacheCCBPrice(
+      this.goldUsdPrice,
+      this.goldRMBPrice,
+      ccbPrice,
+      this.rmbHuiLv,
+      diffPrice
+    );
+    this.ccbchajia = (ccbPrice - ccbCachePrice).toFixed(2);
     // console.log(moment().subtract(1, 'days').format('YYYYMMDD'))
-		// let priceRange = getPriceRange(logContent);
-		// let junjia = sprintf("%.2f",(priceRange["minPrice"]+priceRange["maxPrice"])/2);
-		// let logContent2= file_get_contents('./data/logs/' + moment().subtract(1, 'days').format('YYYYMMDD'));
-		// let priceRange2 = getPriceRange(logContent2);
-		// let junjia2 = sprintf("%.2f",(priceRange2["minPrice"]+priceRange2["maxPrice"])/2);
-    // this.yesterdayDuration = priceRange2["minPrice"] + "-" + priceRange2["maxPrice"] + " 均:" + junjia2;
+    // let priceRange = getPriceRange(this.logContent);
+    // let junjia = sprintf("%.2f",(priceRange["minPrice"]+priceRange["maxPrice"])/2);
+    // let logContent2= file_get_contents('./data/logs/' + moment().subtract(1, 'days').format('YYYYMMDD'));
+    // let priceRange2 = getPriceRange(logContent2);
+    // let junjia2 = sprintf("%.2f",(priceRange2["minPrice"]+priceRange2["maxPrice"])/2);
+
     // this.transToCCBPriceMedium = transToCCBPrice(1370, this.rmbHuiLv2); // 中期目标
   }
-}
+};
 </script>
 
 <style scoped>

@@ -18,11 +18,19 @@ export function checkTingpan() {
 
 // 获取金价
 export function getGoldUsdPrice() {
+	request({
+		url: 'http://localhost:9090/getGoldUsdPrice',
+		params: {
+			exchName: 'WGJS',
+			symbol: 'XAU',
+			st: '0.7231593003962189'
+		}
+	})
 	// const $goldApi = "http://api.q.fx678.com/getQuote.php?exchName=WGJS&symbol=XAU&st=0.7231593003962189";
 	// request({
 	// 	url: $goldApi
 	// })
-	return 0;
+	return 1285;
 }
 
 // 获取人名币汇率
@@ -41,13 +49,13 @@ export function getRmbHuiLv() {
 }
 
 // 千分位格式化数据
-export function transToCCBPrice($goldUsdPrice,$rmbHuilv,$code="01"){
-	return String($goldUsdPrice*$rmbHuilv/31.1034768+0.4,2).replace(/\B(?=(\d{3})+$)/g,',')
+export function transToCCBPrice(goldUsdPrice,rmbHuilv,code="01"){
+	return String((goldUsdPrice*rmbHuilv/31.1034768+0.4).toFixed(2)).replace(/\B(?=(\d{3})+$)/g,',')
 }
 
 // 千分位格式化数据
-export function transToPtPrice($goldUsdPrice,$rmbHuilv){
-	return String($goldUsdPrice*$rmbHuilv/31.1034768+1.1,2).replace(/\B(?=(\d{3})+$)/g,',')
+export function transToPtPrice(goldUsdPrice, rmbHuilv){
+	return String((goldUsdPrice*rmbHuilv/31.1034768+1.1).toFixed(2)).replace(/\B(?=(\d{3})+$)/g,',')
 }
 
 // 
@@ -66,15 +74,17 @@ export function file_get_contents(filename) {
 }
 
 
-export function getPriceRange($str){
+export function getPriceRange(arr){
 	let result = {
-		minPrice: 0,
-		maxPrice: 0
+		minPrice: arr[0]['goldprice'],
+		maxPrice: arr[0]['goldprice']
 	}
-	// if(preg_match_all("/\{(.*?)\,/is",$str,$arr)){
-	//    result['minPrice'] = min($arr[1]);
-	//    result['maxPrice'] = max($arr[1]);
-	// }
+	for (let i = 0; i < arr.length; i++) {
+		if(arr[i]['goldprice'] > result.maxPrice) 
+			result.maxPrice = arr[i]['goldprice'];
+		if(arr[i]['goldprice'] < result.minPrice) 
+			result.minPrice = arr[i]['goldprice'];
+	}
 	return result;
 }
 
